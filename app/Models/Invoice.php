@@ -23,6 +23,7 @@ class Invoice extends Model
         'subtotal',
         'gst_amount',
         'total_amount',
+        'paid_amount',
         'status',
         'organization_id',
     ];
@@ -40,6 +41,7 @@ class Invoice extends Model
             'subtotal' => 'decimal:2',
             'gst_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            'paid_amount' => 'decimal:2',
         ];
     }
 
@@ -65,5 +67,41 @@ class Invoice extends Model
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    /**
+     * Get the payments for the invoice.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get the remaining amount due for the invoice.
+     */
+    public function getRemainingAmountAttribute(): float
+    {
+        return $this->total_amount - $this->paid_amount;
+    }
+
+    /**
+     * Get the status of the invoice dynamically.
+     */
+    public function getStatusAttribute(string $value): string
+    {
+        if ($this->attributes['status'] === 'paid') {
+            return 'paid';
+        }
+
+        if ($this->remaining_amount <= 0) {
+            return 'paid';
+        }
+
+        if ($this->due_date && $this->due_date->isPast() && $this->remaining_amount > 0) {
+            return 'overdue';
+        }
+
+        return $value;
     }
 }
