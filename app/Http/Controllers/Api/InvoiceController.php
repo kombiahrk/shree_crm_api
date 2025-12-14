@@ -10,20 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Config;
+// use Illuminate\Support\Facades\Config; // No longer needed for global GST
 
 class InvoiceController extends Controller
 {
-    // Moved to .env and Config::get('app.gst_rate')
-    // const GST_RATE = 0.05; 
-
-    public function __construct()
-    {
-        // Ensure the GST rate is loaded from config
-        if (!Config::has('app.gst_rate')) {
-            Config::set('app.gst_rate', (float) env('GST_RATE', 0.05));
-        }
-    }
+    // GST rate is now per product or defaults to 0 for custom items
 
     /**
      * Display a listing of the resource.
@@ -62,10 +53,12 @@ class InvoiceController extends Controller
                             ->firstOrFail();
 
         $subtotal = 0;
+        $totalGstAmount = 0;
         $invoiceItemsData = [];
 
         foreach ($request->items as $itemData) {
             $product = null;
+            $itemGstRate = 0.00; // Default GST for custom items
             if (isset($itemData['product_id'])) {
                 $product = Product::where('id', $itemData['product_id'])
                                   ->where('organization_id', $organization->id)
@@ -73,31 +66,33 @@ class InvoiceController extends Controller
                 if ($product->stock_quantity < $itemData['quantity']) {
                     return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
                 }
+                $itemGstRate = $product->gst_rate;
             }
 
             $unitPrice = $itemData['unit_price'];
             $quantity = $itemData['quantity'];
-            $itemTotal = $unitPrice * $quantity;
-            $subtotal += $itemTotal;
+            $itemTotalBeforeGst = $unitPrice * $quantity;
+            $subtotal += $itemTotalBeforeGst;
+            $totalGstAmount += $itemTotalBeforeGst * $itemGstRate;
 
             $invoiceItemsData[] = [
                 'product_id' => $product ? $product->id : null,
                 'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
-                'item_total' => $itemTotal,
+                'item_total' => $itemTotalBeforeGst, // Store total before GST for item
+                'gst_rate' => $itemGstRate,
             ];
         }
 
-        $gstAmount = $subtotal * Config::get('app.gst_rate');
-        $totalAmount = $subtotal + $gstAmount;
+        $totalAmount = $subtotal + $totalGstAmount;
 
         $invoice = $organization->invoices()->create([
             'customer_id' => $customer->id,
             'invoice_date' => $request->invoice_date,
             'due_date' => $request->due_date,
             'subtotal' => $subtotal,
-            'gst_amount' => $gstAmount,
+            'gst_amount' => $totalGstAmount,
             'total_amount' => $totalAmount,
             'status' => $request->status ?? 'draft',
         ]);
@@ -162,7 +157,7 @@ class InvoiceController extends Controller
         // Update items and recalculate totals if items are provided
         if ($request->has('items')) {
             $subtotal = 0;
-            $updatedItemIds = [];
+            $totalGstAmount = 0;
 
             // Restore previous stock for existing items
             foreach ($invoice->items as $oldItem) {
@@ -174,6 +169,7 @@ class InvoiceController extends Controller
 
             foreach ($request->items as $itemData) {
                 $product = null;
+                $itemGstRate = 0.00; // Default GST for custom items
                 if (isset($itemData['product_id'])) {
                     $product = Product::where('id', $itemData['product_id'])
                                       ->where('organization_id', $organization->id)
@@ -181,33 +177,34 @@ class InvoiceController extends Controller
                     if ($product->stock_quantity < $itemData['quantity']) {
                         return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
                     }
+                    $itemGstRate = $product->gst_rate;
                 }
 
                 $unitPrice = $itemData['unit_price'];
                 $quantity = $itemData['quantity'];
-                $itemTotal = $unitPrice * $quantity;
-                $subtotal += $itemTotal;
+                $itemTotalBeforeGst = $unitPrice * $quantity;
+                $subtotal += $itemTotalBeforeGst;
+                $totalGstAmount += $itemTotalBeforeGst * $itemGstRate;
 
-                $newItem = $invoice->items()->create([
+                $invoice->items()->create([
                     'product_id' => $product ? $product->id : null,
                     'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                     'unit_price' => $unitPrice,
                     'quantity' => $quantity,
-                    'item_total' => $itemTotal,
+                    'item_total' => $itemTotalBeforeGst,
+                    'gst_rate' => $itemGstRate,
                 ]);
-                $updatedItemIds[] = $newItem->id;
 
-                if ($newItem->product_id) {
-                    Product::where('id', $newItem->product_id)->decrement('stock_quantity', $newItem->quantity);
+                if ($product) {
+                    Product::where('id', $product->id)->decrement('stock_quantity', $quantity);
                 }
             }
 
-            $gstAmount = $subtotal * Config::get('app.gst_rate');
-            $totalAmount = $subtotal + $gstAmount;
+            $totalAmount = $subtotal + $totalGstAmount;
 
             $invoice->update([
                 'subtotal' => $subtotal,
-                'gst_amount' => $gstAmount,
+                'gst_amount' => $totalGstAmount,
                 'total_amount' => $totalAmount,
             ]);
         }

@@ -22,6 +22,7 @@ class InvoiceItem extends Model
         'unit_price',
         'quantity',
         'item_total',
+        'gst_rate',
     ];
 
     /**
@@ -34,6 +35,7 @@ class InvoiceItem extends Model
         return [
             'unit_price' => 'decimal:2',
             'item_total' => 'decimal:2',
+            'gst_rate' => 'decimal:2',
         ];
     }
 

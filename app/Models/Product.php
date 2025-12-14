@@ -22,8 +22,22 @@ class Product extends Model
         'sku',
         'price',
         'stock_quantity',
+        'gst_rate',
         'organization_id',
     ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+            'gst_rate' => 'decimal:2',
+        ];
+    }
 
     /**
      * Get the organization that the product belongs to.

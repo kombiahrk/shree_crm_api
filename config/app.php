@@ -15,8 +15,6 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
-    'gst_rate' => (float) env('GST_RATE', 0.05),
-
     /*
     |--------------------------------------------------------------------------
     | Application Environment
