@@ -62,4 +62,12 @@ class Product extends Model
     {
         return $this->hasMany(EstimateItem::class);
     }
+
+    /**
+     * Get the purchase order items for the product.
+     */
+    public function purchaseOrderItems(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
 }

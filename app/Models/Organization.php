@@ -66,4 +66,12 @@ class Organization extends Model
     {
         return $this->hasMany(Estimate::class);
     }
+
+    /**
+     * Get the purchase orders for the organization.
+     */
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
 }

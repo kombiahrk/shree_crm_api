@@ -40,6 +40,7 @@ class ProductController extends Controller
             ],
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
+            'gst_rate' => 'required|numeric|min:0|max:1',
         ]);
 
         if ($validator->fails()) {
@@ -87,6 +88,7 @@ class ProductController extends Controller
             ],
             'price' => 'sometimes|required|numeric|min:0',
             'stock_quantity' => 'sometimes|required|integer|min:0',
+            'gst_rate' => 'sometimes|required|numeric|min:0|max:1',
         ]);
 
         if ($validator->fails()) {
