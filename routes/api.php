@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\InvoiceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,4 +18,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('products', ProductController::class);
+    Route::apiResource('invoices', InvoiceController::class);
+    Route::get('invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);
 });

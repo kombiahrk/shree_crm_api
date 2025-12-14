@@ -42,4 +42,12 @@ class Organization extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    /**
+     * Get the invoices for the organization.
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
 }
