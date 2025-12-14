@@ -50,4 +50,12 @@ class Organization extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    /**
+     * Get the suppliers for the organization.
+     */
+    public function suppliers(): HasMany
+    {
+        return $this->hasMany(Supplier::class);
+    }
 }
