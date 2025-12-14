@@ -89,7 +89,7 @@ class InvoiceController extends Controller
             ];
         }
 
-        $gstAmount = $subtotal * self::GST_RATE;
+        $gstAmount = $subtotal * Config::get('app.gst_rate');
         $totalAmount = $subtotal + $gstAmount;
 
         $invoice = $organization->invoices()->create([
@@ -202,7 +202,7 @@ class InvoiceController extends Controller
                 }
             }
 
-            $gstAmount = $subtotal * self::GST_RATE;
+            $gstAmount = $subtotal * Config::get('app.gst_rate');
             $totalAmount = $subtotal + $gstAmount;
 
             $invoice->update([
