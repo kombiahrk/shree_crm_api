@@ -34,4 +34,12 @@ class Organization extends Model
     {
         return $this->hasMany(Customer::class);
     }
+
+    /**
+     * Get the products for the organization.
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
 }
