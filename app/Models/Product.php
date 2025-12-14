@@ -54,4 +54,12 @@ class Product extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
+
+    /**
+     * Get the estimate items for the product.
+     */
+    public function estimateItems(): HasMany
+    {
+        return $this->hasMany(EstimateItem::class);
+    }
 }

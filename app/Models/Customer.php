@@ -38,4 +38,12 @@ class Customer extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    /**
+     * Get the estimates for the customer.
+     */
+    public function estimates(): HasMany
+    {
+        return $this->hasMany(Estimate::class);
+    }
 }
