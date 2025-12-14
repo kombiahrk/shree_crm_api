@@ -82,4 +82,12 @@ class Organization extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    /**
+     * Get the reminders for the organization.
+     */
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
+    }
 }
