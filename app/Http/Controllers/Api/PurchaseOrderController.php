@@ -82,7 +82,7 @@ class PurchaseOrderController extends Controller
         $totalAmount = $subtotal + $totalGstAmount;
 
         $purchaseOrder = $organization->purchaseOrders()->create([
-            'supplier_id' => $customer->id, // Typo: should be supplier_id
+            'supplier_id' => $supplier->id, // Corrected typo
             'order_date' => $request->order_date,
             'expected_delivery_date' => $request->expected_delivery_date,
             'subtotal' => $subtotal,
