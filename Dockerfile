@@ -44,14 +44,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy application code
 COPY . /var/www/html
 
-# Install Composer dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Optimize Laravel
-RUN php artisan optimize
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose port 9000 for PHP-FPM
 EXPOSE 9000
 
-# Start PHP-FPM
+# Set entrypoint to our custom script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Start PHP-FPM as the default command for the entrypoint
 CMD ["php-fpm"]

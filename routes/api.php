@@ -13,6 +13,10 @@ use App\Http\Controllers\Api\ReminderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/status', function () {
+    return response()->json(['message' => 'Welcome to the API']);
+});
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
