@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Nginx service
+  nginx:
+    image: nginx:stable-alpine
+    container_name: shree_crm_nginx
+    ports:
+      - "8000:80" # Map host port 8000 to container port 80
+    volumes:
+      - .:/var/www/html:delegated # Mount application code
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro # Nginx configuration
+    depends_on:
+      - app # Nginx depends on PHP-FPM application
+    networks:
+      - shree_crm_network
+
+  # PHP-FPM application service
+  app:
+    build:
+      context: . # Use the current directory for Dockerfile
+      dockerfile: Dockerfile
+    container_name: shree_crm_app
+    volumes:
+      - .:/var/www/html:delegated # Mount application code
+    environment:
+      # Laravel environment variables - adjust as needed
+      APP_NAME: "${APP_NAME}"
+      APP_ENV: "${APP_ENV}"
+      APP_KEY: "${APP_KEY}"
+      APP_DEBUG: "${APP_DEBUG}"
+      APP_URL: "${APP_URL}"
+      DB_CONNECTION: "${DB_CONNECTION}"
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT}"
+      DB_DATABASE: "${DB_DATABASE}"
+      DB_USERNAME: "${DB_USERNAME}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+    networks:
+      - shree_crm_network
+
+  # MySQL database service
+  db:
+    image: mysql:8.0 # Use MySQL 8.0
+    container_name: shree_crm_db
+    ports:
+      - "3306:3306" # Map host port 3306 to container port 3306
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}" # Use DB_PASSWORD from .env as root password
+      MYSQL_DATABASE: "${DB_DATABASE}" # Use DB_DATABASE from .env
+      MYSQL_USER: "${DB_USERNAME}" # Use DB_USERNAME from .env
+      MYSQL_PASSWORD: "${DB_PASSWORD}" # Use DB_PASSWORD from .env
+    volumes:
+      - db_data:/var/lib/mysql # Persist database data
+    networks:
+      - shree_crm_network
+
+# Docker Networks
+networks:
+  shree_crm_network:
+    driver: bridge
+
+# Docker Volumes
+volumes:
+  db_data: # Define the volume for database persistence
