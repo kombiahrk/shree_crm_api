@@ -20,9 +20,13 @@ class Product extends Model
         'name',
         'description',
         'sku',
-        'price',
+        'mrp',
+        'purchase_price',
+        'selling_price',
         'stock_quantity',
-        'gst_rate',
+        'category_id',
+        'unit_id',
+        'tax_id',
         'organization_id',
     ];
 
@@ -34,8 +38,9 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'price' => 'decimal:2',
-            'gst_rate' => 'decimal:2',
+            'mrp' => 'decimal:2',
+            'purchase_price' => 'decimal:2',
+            'selling_price' => 'decimal:2',
         ];
     }
 
@@ -45,6 +50,30 @@ class Product extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Get the category that the product belongs to.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get the unit that the product belongs to.
+     */
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * Get the tax that applies to the product.
+     */
+    public function tax(): BelongsTo
+    {
+        return $this->belongsTo(Tax::class);
     }
 
     /**

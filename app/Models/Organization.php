@@ -17,6 +17,7 @@ class Organization extends Model
      */
     protected $fillable = [
         'name',
+        'state',
     ];
 
     /**
@@ -25,6 +26,30 @@ class Organization extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * Get the categories for the organization.
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    /**
+     * Get the units for the organization.
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(Unit::class);
+    }
+
+    /**
+     * Get the taxes for the organization.
+     */
+    public function taxes(): HasMany
+    {
+        return $this->hasMany(Tax::class);
     }
 
     /**

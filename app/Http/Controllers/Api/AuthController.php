@@ -23,6 +23,7 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'organization_name' => ['required', 'string', 'max:255'],
+            'organization_state' => ['required', 'string', 'max:255'], // New validation for organization state
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::defaults()],
@@ -34,6 +35,7 @@ class AuthController extends Controller
 
         $organization = Organization::create([
             'name' => $request->organization_name,
+            'state' => $request->organization_state, // Set organization state
         ]);
 
         $user = $organization->users()->create([
