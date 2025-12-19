@@ -28,6 +28,9 @@ class CustomerController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:customers',
             'phone' => 'nullable|string|max:255',
+            'whatsapp_number' => 'nullable|string|max:255', // Basic validation for now
+            'state' => 'nullable|string|max:255',
+            'gst_number' => 'nullable|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
         ]);
 
         if ($validator->fails()) {
@@ -64,6 +67,9 @@ class CustomerController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:customers,email,' . $customer->id,
             'phone' => 'nullable|string|max:255',
+            'whatsapp_number' => 'nullable|string|max:255', // Basic validation for now
+            'state' => 'nullable|string|max:255',
+            'gst_number' => 'nullable|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
         ]);
 
         if ($validator->fails()) {

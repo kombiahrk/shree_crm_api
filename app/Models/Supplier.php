@@ -21,7 +21,10 @@ class Supplier extends Model
         'contact_person',
         'email',
         'phone',
+        'whatsapp_number',
         'address',
+        'state',
+        'gst_number',
         'organization_id',
     ];
 

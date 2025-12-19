@@ -20,6 +20,9 @@ class Customer extends Model
         'name',
         'email',
         'phone',
+        'whatsapp_number',
+        'state',
+        'gst_number',
         'organization_id',
     ];
 

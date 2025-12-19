@@ -21,7 +21,9 @@ class PurchaseOrder extends Model
         'order_date',
         'expected_delivery_date',
         'subtotal',
-        'gst_amount',
+        'cgst_amount',
+        'sgst_amount',
+        'igst_amount',
         'total_amount',
         'status',
         'organization_id',
@@ -38,7 +40,9 @@ class PurchaseOrder extends Model
             'order_date' => 'date',
             'expected_delivery_date' => 'date',
             'subtotal' => 'decimal:2',
-            'gst_amount' => 'decimal:2',
+            'cgst_amount' => 'decimal:2',
+            'sgst_amount' => 'decimal:2',
+            'igst_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
         ];
     }

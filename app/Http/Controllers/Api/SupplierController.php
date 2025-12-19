@@ -39,7 +39,10 @@ class SupplierController extends Controller
                 }),
             ],
             'phone' => 'nullable|string|max:255',
+            'whatsapp_number' => 'nullable|string|max:255', // Basic validation for now
             'address' => 'nullable|string',
+            'state' => 'nullable|string|max:255',
+            'gst_number' => 'nullable|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
         ]);
 
         if ($validator->fails()) {
@@ -85,7 +88,10 @@ class SupplierController extends Controller
                 })->ignore($supplier->id),
             ],
             'phone' => 'nullable|string|max:255',
+            'whatsapp_number' => 'nullable|string|max:255', // Basic validation for now
             'address' => 'nullable|string',
+            'state' => 'nullable|string|max:255',
+            'gst_number' => 'nullable|string|regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
         ]);
 
         if ($validator->fails()) {

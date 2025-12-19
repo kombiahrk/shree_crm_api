@@ -22,7 +22,12 @@ class EstimateItem extends Model
         'unit_price',
         'quantity',
         'item_total',
-        'gst_rate',
+        'cgst_rate',
+        'sgst_rate',
+        'igst_rate',
+        'cgst_amount',
+        'sgst_amount',
+        'igst_amount',
     ];
 
     /**
@@ -35,7 +40,12 @@ class EstimateItem extends Model
         return [
             'unit_price' => 'decimal:2',
             'item_total' => 'decimal:2',
-            'gst_rate' => 'decimal:2',
+            'cgst_rate' => 'decimal:2',
+            'sgst_rate' => 'decimal:2',
+            'igst_rate' => 'decimal:2',
+            'cgst_amount' => 'decimal:2',
+            'sgst_amount' => 'decimal:2',
+            'igst_amount' => 'decimal:2',
         ];
     }
 

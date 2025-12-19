@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Models\Tax; // Import Tax model
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -51,42 +52,77 @@ class PurchaseOrderController extends Controller
                             ->firstOrFail();
 
         $subtotal = 0;
-        $totalGstAmount = 0;
+        $totalCgstAmount = 0;
+        $totalSgstAmount = 0;
+        $totalIgstAmount = 0;
         $purchaseOrderItemsData = [];
+
+        // Determine if inter-state (IGST) or intra-state (CGST + SGST)
+        $isInterState = ($organization->state !== null && $supplier->state !== null && $organization->state !== $supplier->state);
 
         foreach ($request->items as $itemData) {
             $product = null;
-            $itemGstRate = $itemData['gst_rate'];
+            $itemTaxRate = 0.00; // Default tax rate
+
             if (isset($itemData['product_id'])) {
-                $product = Product::where('id', $itemData['product_id'])
+                $product = Product::with('tax')->where('id', $itemData['product_id'])
                                   ->where('organization_id', $organization->id)
                                   ->firstOrFail();
+                $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
             }
 
             $unitCost = $itemData['unit_cost'];
             $quantity = $itemData['quantity'];
-            $itemTotalBeforeGst = $unitCost * $quantity;
-            $subtotal += $itemTotalBeforeGst;
-            $totalGstAmount += $itemTotalBeforeGst * $itemGstRate;
+            $itemTotalBeforeTax = $unitCost * $quantity;
+            $subtotal += $itemTotalBeforeTax;
+
+            $cgstRate = 0.00;
+            $sgstRate = 0.00;
+            $igstRate = 0.00;
+            $cgstAmount = 0.00;
+            $sgstAmount = 0.00;
+            $igstAmount = 0.00;
+
+            if ($itemTaxRate > 0) {
+                if ($isInterState) {
+                    $igstRate = $itemTaxRate / 100;
+                    $igstAmount = $itemTotalBeforeTax * $igstRate;
+                    $totalIgstAmount += $igstAmount;
+                } else {
+                    $cgstRate = ($itemTaxRate / 2) / 100;
+                    $sgstRate = ($itemTaxRate / 2) / 100;
+                    $cgstAmount = $itemTotalBeforeTax * $cgstRate;
+                    $sgstAmount = $itemTotalBeforeTax * $sgstRate;
+                    $totalCgstAmount += $cgstAmount;
+                    $totalSgstAmount += $sgstAmount;
+                }
+            }
 
             $purchaseOrderItemsData[] = [
                 'product_id' => $product ? $product->id : null,
                 'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                 'quantity' => $quantity,
                 'unit_cost' => $unitCost,
-                'item_total' => $itemTotalBeforeGst, // Store total before GST for item
-                'gst_rate' => $itemGstRate,
+                'item_total' => $itemTotalBeforeTax,
+                'cgst_rate' => $cgstRate,
+                'sgst_rate' => $sgstRate,
+                'igst_rate' => $igstRate,
+                'cgst_amount' => $cgstAmount,
+                'sgst_amount' => $sgstAmount,
+                'igst_amount' => $igstAmount,
             ];
         }
 
-        $totalAmount = $subtotal + $totalGstAmount;
+        $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
 
         $purchaseOrder = $organization->purchaseOrders()->create([
-            'supplier_id' => $supplier->id, // Corrected typo
+            'supplier_id' => $supplier->id,
             'order_date' => $request->order_date,
             'expected_delivery_date' => $request->expected_delivery_date,
             'subtotal' => $subtotal,
-            'gst_amount' => $totalGstAmount,
+            'cgst_amount' => $totalCgstAmount,
+            'sgst_amount' => $totalSgstAmount,
+            'igst_amount' => $totalIgstAmount,
             'total_amount' => $totalAmount,
             'status' => $request->status ?? 'draft',
         ]);
@@ -139,49 +175,81 @@ class PurchaseOrderController extends Controller
         }
 
         // Verify supplier belongs to the organization if supplier_id is provided
-        if ($request->has('supplier_id')) {
-            Supplier::where('id', $request->supplier_id)
-                    ->where('organization_id', $organization->id)
-                    ->firstOrFail();
-        }
+        $supplier = Supplier::where('id', $request->supplier_id ?? $purchaseOrder->supplier_id)
+                            ->where('organization_id', $organization->id)
+                            ->firstOrFail();
+
+        // Determine if inter-state (IGST) or intra-state (CGST + SGST)
+        $isInterState = ($organization->state !== null && $supplier->state !== null && $organization->state !== $supplier->state);
 
         // Update items and recalculate totals if items are provided
         if ($request->has('items')) {
             $subtotal = 0;
-            $totalGstAmount = 0;
+            $totalCgstAmount = 0;
+            $totalSgstAmount = 0;
+            $totalIgstAmount = 0;
 
             $purchaseOrder->items()->delete(); // Remove all old items to re-add/update
 
             foreach ($request->items as $itemData) {
                 $product = null;
-                $itemGstRate = $itemData['gst_rate'];
+                $itemTaxRate = 0.00; // Default tax rate
                 if (isset($itemData['product_id'])) {
-                    $product = Product::where('id', $itemData['product_id'])
+                    $product = Product::with('tax')->where('id', $itemData['product_id'])
                                       ->where('organization_id', $organization->id)
                                       ->firstOrFail();
+                    $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
                 }
 
                 $unitCost = $itemData['unit_cost'];
                 $quantity = $itemData['quantity'];
-                $itemTotalBeforeGst = $unitCost * $quantity;
-                $subtotal += $itemTotalBeforeGst;
-                $totalGstAmount += $itemTotalBeforeGst * $itemGstRate;
+                $itemTotalBeforeTax = $unitCost * $quantity;
+                $subtotal += $itemTotalBeforeTax;
+
+                $cgstRate = 0.00;
+                $sgstRate = 0.00;
+                $igstRate = 0.00;
+                $cgstAmount = 0.00;
+                $sgstAmount = 0.00;
+                $igstAmount = 0.00;
+
+                if ($itemTaxRate > 0) {
+                    if ($isInterState) {
+                        $igstRate = $itemTaxRate / 100;
+                        $igstAmount = $itemTotalBeforeTax * $igstRate;
+                        $totalIgstAmount += $igstAmount;
+                    } else {
+                        $cgstRate = ($itemTaxRate / 2) / 100;
+                        $sgstRate = ($itemTaxRate / 2) / 100;
+                        $cgstAmount = $itemTotalBeforeTax * $cgstRate;
+                        $sgstAmount = $itemTotalBeforeTax * $sgstRate;
+                        $totalCgstAmount += $cgstAmount;
+                        $totalSgstAmount += $sgstAmount;
+                    }
+                }
 
                 $purchaseOrder->items()->create([
                     'product_id' => $product ? $product->id : null,
                     'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                     'quantity' => $quantity,
                     'unit_cost' => $unitCost,
-                    'item_total' => $itemTotalBeforeGst,
-                    'gst_rate' => $itemGstRate,
+                    'item_total' => $itemTotalBeforeTax,
+                    'cgst_rate' => $cgstRate,
+                    'sgst_rate' => $sgstRate,
+                    'igst_rate' => $igstRate,
+                    'cgst_amount' => $cgstAmount,
+                    'sgst_amount' => $sgstAmount,
+                    'igst_amount' => $igstAmount,
                 ]);
             }
 
-            $totalAmount = $subtotal + $totalGstAmount;
+            $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
 
             $purchaseOrder->update([
                 'subtotal' => $subtotal,
-                'gst_amount' => $totalGstAmount,
+                'cgst_amount' => $totalCgstAmount,
+                'sgst_amount' => $totalSgstAmount,
+                'igst_amount' => $totalIgstAmount,
                 'total_amount' => $totalAmount,
             ]);
         }
