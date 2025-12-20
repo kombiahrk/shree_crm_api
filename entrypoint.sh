@@ -23,5 +23,13 @@ php artisan route:cache
 php artisan view:cache
 echo "Laravel optimization complete."
 
+# Set permissions for storage and bootstrap/cache
+echo "Setting permissions for storage and bootstrap/cache..."
+chown -R www-data:www-data /var/www/html/storage
+chown -R www-data:www-data /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/bootstrap/cache
+echo "Permissions set."
+
 # Execute the main container command
 exec "$@"
