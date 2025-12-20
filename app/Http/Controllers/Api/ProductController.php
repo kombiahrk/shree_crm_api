@@ -33,9 +33,13 @@ class ProductController extends Controller
                 'max:255',
                 Rule::unique('products'),
             ],
-            'price' => 'required|numeric|min:0',
+            'mrp' => 'required|numeric|min:0',
+            'purchase_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
-            'gst_rate' => 'required|numeric|min:0|max:1',
+            'category_id' => 'nullable|exists:categories,id',
+            'unit_id' => 'nullable|exists:units,id',
+            'tax_id' => 'nullable|exists:taxes,id',
         ]);
 
         if ($validator->fails()) {
@@ -70,9 +74,13 @@ class ProductController extends Controller
                 'max:255',
                 Rule::unique('products')->ignore($product->id),
             ],
-            'price' => 'sometimes|required|numeric|min:0',
+            'mrp' => 'sometimes|required|numeric|min:0',
+            'purchase_price' => 'sometimes|required|numeric|min:0',
+            'selling_price' => 'sometimes|required|numeric|min:0',
             'stock_quantity' => 'sometimes|required|integer|min:0',
-            'gst_rate' => 'sometimes|required|numeric|min:0|max:1',
+            'category_id' => 'sometimes|nullable|exists:categories,id',
+            'unit_id' => 'sometimes|nullable|exists:units,id',
+            'tax_id' => 'sometimes|nullable|exists:taxes,id',
         ]);
 
         if ($validator->fails()) {
