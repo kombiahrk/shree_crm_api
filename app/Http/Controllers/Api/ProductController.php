@@ -16,8 +16,7 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->products);
+        return response()->json(Product::all());
     }
 
     /**
@@ -25,8 +24,6 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -34,9 +31,7 @@ class ProductController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('products')->where(function ($query) use ($organization) {
-                    return $query->where('organization_id', $organization->id);
-                }),
+                Rule::unique('products'),
             ],
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
@@ -47,7 +42,7 @@ class ProductController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $product = $organization->products()->create($request->all());
+        $product = Product::create($request->all());
 
         return response()->json($product, 201);
     }
@@ -57,9 +52,6 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        if ($product->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($product);
     }
 
@@ -68,12 +60,6 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        if ($product->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
@@ -82,9 +68,7 @@ class ProductController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('products')->where(function ($query) use ($organization) {
-                    return $query->where('organization_id', $organization->id);
-                })->ignore($product->id),
+                Rule::unique('products')->ignore($product->id),
             ],
             'price' => 'sometimes|required|numeric|min:0',
             'stock_quantity' => 'sometimes|required|integer|min:0',
@@ -105,10 +89,6 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        if ($product->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $product->delete();
 
         return response()->json(null, 204);

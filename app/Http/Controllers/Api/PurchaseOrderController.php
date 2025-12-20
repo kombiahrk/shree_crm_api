@@ -19,8 +19,7 @@ class PurchaseOrderController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->purchaseOrders()->with(['supplier', 'items.product'])->get());
+        return response()->json(PurchaseOrder::with(['supplier', 'items.product'])->get());
     }
 
     /**
@@ -46,10 +45,8 @@ class PurchaseOrderController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify supplier belongs to the organization
-        $supplier = Supplier::where('id', $request->supplier_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify supplier belongs to the organization (handled by global scope)
+        $supplier = Supplier::where('id', $request->supplier_id)->firstOrFail();
 
         $subtotal = 0;
         $totalCgstAmount = 0;
@@ -65,9 +62,7 @@ class PurchaseOrderController extends Controller
             $itemTaxRate = 0.00; // Default tax rate
 
             if (isset($itemData['product_id'])) {
-                $product = Product::with('tax')->where('id', $itemData['product_id'])
-                                  ->where('organization_id', $organization->id)
-                                  ->firstOrFail();
+                $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                 $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
             }
 
@@ -115,7 +110,7 @@ class PurchaseOrderController extends Controller
 
         $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
 
-        $purchaseOrder = $organization->purchaseOrders()->create([
+        $purchaseOrder = PurchaseOrder::create([
             'supplier_id' => $supplier->id,
             'order_date' => $request->order_date,
             'expected_delivery_date' => $request->expected_delivery_date,
@@ -139,9 +134,6 @@ class PurchaseOrderController extends Controller
      */
     public function show(PurchaseOrder $purchaseOrder)
     {
-        if ($purchaseOrder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($purchaseOrder->load(['supplier', 'items.product']));
     }
 
@@ -150,10 +142,6 @@ class PurchaseOrderController extends Controller
      */
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
-        if ($purchaseOrder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $organization = Auth::user()->organization;
 
         $validator = Validator::make($request->all(), [
@@ -174,10 +162,8 @@ class PurchaseOrderController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify supplier belongs to the organization if supplier_id is provided
-        $supplier = Supplier::where('id', $request->supplier_id ?? $purchaseOrder->supplier_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify supplier belongs to the organization if supplier_id is provided (handled by global scope)
+        $supplier = Supplier::where('id', $request->supplier_id ?? $purchaseOrder->supplier_id)->firstOrFail();
 
         // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $supplier->state !== null && $organization->state !== $supplier->state);
@@ -195,9 +181,7 @@ class PurchaseOrderController extends Controller
                 $product = null;
                 $itemTaxRate = 0.00; // Default tax rate
                 if (isset($itemData['product_id'])) {
-                    $product = Product::with('tax')->where('id', $itemData['product_id'])
-                                      ->where('organization_id', $organization->id)
-                                      ->firstOrFail();
+                    $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                     $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
                 }
 
@@ -264,10 +248,6 @@ class PurchaseOrderController extends Controller
      */
     public function destroy(PurchaseOrder $purchaseOrder)
     {
-        if ($purchaseOrder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-        
         $purchaseOrder->delete();
 
         return response()->json(null, 204);
@@ -278,10 +258,6 @@ class PurchaseOrderController extends Controller
      */
     public function receive(PurchaseOrder $purchaseOrder)
     {
-        if ($purchaseOrder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         if ($purchaseOrder->status === 'received') {
             return response()->json(['message' => 'Purchase order already marked as received.'], 400);
         }

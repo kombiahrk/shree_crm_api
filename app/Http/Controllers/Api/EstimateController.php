@@ -19,8 +19,7 @@ class EstimateController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->estimates()->with(['customer', 'items.product'])->get());
+        return response()->json(Estimate::with(['customer', 'items.product'])->get());
     }
 
     /**
@@ -45,10 +44,8 @@ class EstimateController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify customer belongs to the organization
-        $customer = Customer::where('id', $request->customer_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify customer belongs to the organization (handled by global scope)
+        $customer = Customer::where('id', $request->customer_id)->firstOrFail();
 
         $subtotal = 0;
         $totalCgstAmount = 0;
@@ -64,9 +61,7 @@ class EstimateController extends Controller
             $itemTaxRate = 0.00; // Default tax rate (e.g., 0 for custom items or if product has no tax)
 
             if (isset($itemData['product_id'])) {
-                $product = Product::with('tax')->where('id', $itemData['product_id'])
-                                  ->where('organization_id', $organization->id)
-                                  ->firstOrFail();
+                $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                 $itemTaxRate = $product->tax ? $product->tax->rate : 0.00; // Get rate from Tax model
             }
 
@@ -114,7 +109,7 @@ class EstimateController extends Controller
 
         $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
 
-        $estimate = $organization->estimates()->create([
+        $estimate = Estimate::create([
             'customer_id' => $customer->id,
             'estimate_date' => $request->estimate_date,
             'expiry_date' => $request->expiry_date,
@@ -138,9 +133,6 @@ class EstimateController extends Controller
      */
     public function show(Estimate $estimate)
     {
-        if ($estimate->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($estimate->load(['customer', 'items.product']));
     }
 
@@ -149,10 +141,6 @@ class EstimateController extends Controller
      */
     public function update(Request $request, Estimate $estimate)
     {
-        if ($estimate->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $organization = Auth::user()->organization;
 
         $validator = Validator::make($request->all(), [
@@ -172,10 +160,8 @@ class EstimateController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify customer belongs to the organization if customer_id is provided
-        $customer = Customer::where('id', $request->customer_id ?? $estimate->customer_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify customer belongs to the organization if customer_id is provided (handled by global scope)
+        $customer = Customer::where('id', $request->customer_id ?? $estimate->customer_id)->firstOrFail();
 
         // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $customer->state !== null && $organization->state !== $customer->state);
@@ -194,9 +180,7 @@ class EstimateController extends Controller
                 $product = null;
                 $itemTaxRate = 0.00; // Default tax for custom items
                 if (isset($itemData['product_id'])) {
-                    $product = Product::with('tax')->where('id', $itemData['product_id'])
-                                      ->where('organization_id', $organization->id)
-                                      ->firstOrFail();
+                    $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                     $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
                 }
 
@@ -263,10 +247,6 @@ class EstimateController extends Controller
      */
     public function destroy(Estimate $estimate)
     {
-        if ($estimate->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $estimate->delete();
 
         return response()->json(null, 204);

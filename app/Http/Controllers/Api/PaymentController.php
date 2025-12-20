@@ -16,8 +16,7 @@ class PaymentController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->payments()->with(['invoice.customer'])->get());
+        return response()->json(Payment::with(['invoice.customer'])->get());
     }
 
     /**
@@ -25,8 +24,6 @@ class PaymentController extends Controller
      */
     public function store(Request $request)
     {
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'invoice_id' => 'required|exists:invoices,id',
             'payment_date' => 'required|date',
@@ -39,17 +36,15 @@ class PaymentController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify invoice belongs to the organization
-        $invoice = Invoice::where('id', $request->invoice_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify invoice belongs to the organization (handled by global scope)
+        $invoice = Invoice::where('id', $request->invoice_id)->firstOrFail();
 
         // Ensure payment amount does not exceed remaining amount if status is not fully paid
         if (($invoice->paid_amount + $request->amount) > $invoice->total_amount + 0.001) { // Add a small buffer for float precision
             return response()->json(['message' => 'Payment amount exceeds remaining balance.'], 422);
         }
 
-        $payment = $organization->payments()->create($request->all());
+        $payment = Payment::create($request->all());
 
         $invoice->increment('paid_amount', $request->amount);
         // The status accessor handles the actual status update logic
@@ -63,9 +58,6 @@ class PaymentController extends Controller
      */
     public function show(Payment $payment)
     {
-        if ($payment->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($payment->load(['invoice.customer']));
     }
 
@@ -74,12 +66,6 @@ class PaymentController extends Controller
      */
     public function update(Request $request, Payment $payment)
     {
-        if ($payment->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'invoice_id' => 'sometimes|required|exists:invoices,id',
             'payment_date' => 'sometimes|required|date',
@@ -113,10 +99,6 @@ class PaymentController extends Controller
      */
     public function destroy(Payment $payment)
     {
-        if ($payment->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $invoice = $payment->invoice;
         $paymentAmount = $payment->amount;
 

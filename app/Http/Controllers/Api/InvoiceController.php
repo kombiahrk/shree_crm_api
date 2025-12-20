@@ -19,8 +19,7 @@ class InvoiceController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->invoices()->with(['customer', 'items.product'])->get());
+        return response()->json(Invoice::with(['customer', 'items.product'])->get());
     }
 
     /**
@@ -45,10 +44,8 @@ class InvoiceController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify customer belongs to the organization
-        $customer = Customer::where('id', $request->customer_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify customer belongs to the organization (handled by global scope)
+        $customer = Customer::where('id', $request->customer_id)->firstOrFail();
 
         $subtotal = 0;
         $totalCgstAmount = 0;
@@ -64,9 +61,7 @@ class InvoiceController extends Controller
             $itemTaxRate = 0.00; // Default tax rate (e.g., 0 for custom items or if product has no tax)
 
             if (isset($itemData['product_id'])) {
-                $product = Product::with('tax')->where('id', $itemData['product_id'])
-                                  ->where('organization_id', $organization->id)
-                                  ->firstOrFail();
+                $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                 if ($product->stock_quantity < $itemData['quantity']) {
                     return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
                 }
@@ -117,7 +112,7 @@ class InvoiceController extends Controller
 
         $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
 
-        $invoice = $organization->invoices()->create([
+        $invoice = Invoice::create([
             'customer_id' => $customer->id,
             'invoice_date' => $request->invoice_date,
             'due_date' => $request->due_date,
@@ -145,9 +140,6 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        if ($invoice->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($invoice->load(['customer', 'items.product']));
     }
 
@@ -156,10 +148,6 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, Invoice $invoice)
     {
-        if ($invoice->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $organization = Auth::user()->organization;
 
         $validator = Validator::make($request->all(), [
@@ -179,10 +167,8 @@ class InvoiceController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify customer belongs to the organization if customer_id is provided
-        $customer = Customer::where('id', $request->customer_id ?? $invoice->customer_id)
-                            ->where('organization_id', $organization->id)
-                            ->firstOrFail();
+        // Verify customer belongs to the organization if customer_id is provided (handled by global scope)
+        $customer = Customer::where('id', $request->customer_id ?? $invoice->customer_id)->firstOrFail();
 
         // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $customer->state !== null && $organization->state !== $customer->state);
@@ -207,9 +193,7 @@ class InvoiceController extends Controller
                 $product = null;
                 $itemTaxRate = 0.00; // Default tax for custom items
                 if (isset($itemData['product_id'])) {
-                    $product = Product::with('tax')->where('id', $itemData['product_id'])
-                                      ->where('organization_id', $organization->id)
-                                      ->firstOrFail();
+                    $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                     if ($product->stock_quantity < $itemData['quantity']) {
                         return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
                     }
@@ -283,10 +267,6 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
-        if ($invoice->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         // Increment stock quantities back if products were associated
         foreach ($invoice->items as $item) {
             if ($item->product_id) {
@@ -306,10 +286,6 @@ class InvoiceController extends Controller
      */
     public function receipt(Invoice $invoice)
     {
-        if ($invoice->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         return response()->json($invoice->load(['customer', 'items.product']));
     }
 }

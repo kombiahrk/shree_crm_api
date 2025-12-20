@@ -15,9 +15,7 @@ class ReminderController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        // Eager load the related entity based on its type
-        return response()->json($organization->reminders()->with('relatedTo')->get());
+        return response()->json(Reminder::with('relatedTo')->get());
     }
 
     /**
@@ -25,8 +23,6 @@ class ReminderController extends Controller
      */
     public function store(Request $request)
     {
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -45,16 +41,14 @@ class ReminderController extends Controller
             if (!class_exists($modelClass)) {
                 return response()->json(['message' => 'Invalid related_to_type.'], 422);
             }
-            // Ensure the related entity exists and belongs to the same organization
-            $relatedEntity = $modelClass::where('id', $request->related_to_id)
-                                        ->where('organization_id', $organization->id)
-                                        ->first();
+            // Ensure the related entity exists and belongs to the same organization (handled by global scope)
+            $relatedEntity = $modelClass::where('id', $request->related_to_id)->first();
             if (!$relatedEntity) {
                 return response()->json(['message' => "Related entity with ID {$request->related_to_id} not found or does not belong to your organization."], 422);
             }
         }
 
-        $reminder = $organization->reminders()->create($request->all());
+        $reminder = Reminder::create($request->all());
 
         return response()->json($reminder->load('relatedTo'), 201);
     }
@@ -64,9 +58,6 @@ class ReminderController extends Controller
      */
     public function show(Reminder $reminder)
     {
-        if ($reminder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($reminder->load('relatedTo'));
     }
 
@@ -75,12 +66,6 @@ class ReminderController extends Controller
      */
     public function update(Request $request, Reminder $reminder)
     {
-        if ($reminder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
@@ -99,9 +84,7 @@ class ReminderController extends Controller
             if (!class_exists($modelClass)) {
                 return response()->json(['message' => 'Invalid related_to_type.'], 422);
             }
-            $relatedEntity = $modelClass::where('id', $request->related_to_id)
-                                        ->where('organization_id', $organization->id)
-                                        ->first();
+            $relatedEntity = $modelClass::where('id', $request->related_to_id)->first();
             if (!$relatedEntity) {
                 return response()->json(['message' => "Related entity with ID {$request->related_to_id} not found or does not belong to your organization."], 422);
             }
@@ -117,10 +100,6 @@ class ReminderController extends Controller
      */
     public function destroy(Reminder $reminder)
     {
-        if ($reminder->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $reminder->delete();
 
         return response()->json(null, 204);

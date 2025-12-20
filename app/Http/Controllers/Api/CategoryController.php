@@ -15,8 +15,7 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->categories()->with('parentCategory')->get());
+        return response()->json(Category::with('parentCategory')->get());
     }
 
     /**
@@ -35,26 +34,18 @@ class CategoryController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify parent category belongs to the same organization if provided
+        // Verify parent category belongs to the same organization if provided (handled by global scope)
         if ($request->filled('parent_id')) {
-            Category::where('id', $request->parent_id)
-                    ->where('organization_id', $organization->id)
-                    ->firstOrFail();
+            Category::where('id', $request->parent_id)->firstOrFail();
         }
 
-        $category = $organization->categories()->create($request->all());
+        $category = Category::create($request->all());
 
         return response()->json($category->load('parentCategory'), 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Category $category)
     {
-        if ($category->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($category->load('parentCategory'));
     }
 
@@ -63,10 +54,6 @@ class CategoryController extends Controller
      */
     public function update(Request $request, Category $category)
     {
-        if ($category->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $organization = Auth::user()->organization;
 
         $validator = Validator::make($request->all(), [
@@ -78,11 +65,9 @@ class CategoryController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify parent category belongs to the same organization if provided
+        // Verify parent category belongs to the same organization if provided (handled by global scope)
         if ($request->filled('parent_id')) {
-            Category::where('id', $request->parent_id)
-                    ->where('organization_id', $organization->id)
-                    ->firstOrFail();
+            Category::where('id', $request->parent_id)->firstOrFail();
         }
 
         $category->update($request->all());
@@ -95,10 +80,6 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        if ($category->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $category->delete();
 
         return response()->json(null, 204);

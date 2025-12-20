@@ -16,8 +16,7 @@ class SupplierController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->suppliers);
+        return response()->json(Supplier::all());
     }
 
     /**
@@ -25,8 +24,6 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'contact_person' => 'nullable|string|max:255',
@@ -34,9 +31,7 @@ class SupplierController extends Controller
                 'nullable',
                 'email',
                 'max:255',
-                Rule::unique('suppliers')->where(function ($query) use ($organization) {
-                    return $query->where('organization_id', $organization->id);
-                }),
+                Rule::unique('suppliers'),
             ],
             'phone' => 'nullable|string|max:255',
             'whatsapp_number' => 'nullable|string|max:255', // Basic validation for now
@@ -49,7 +44,7 @@ class SupplierController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $supplier = $organization->suppliers()->create($request->all());
+        $supplier = Supplier::create($request->all());
 
         return response()->json($supplier, 201);
     }
@@ -59,9 +54,6 @@ class SupplierController extends Controller
      */
     public function show(Supplier $supplier)
     {
-        if ($supplier->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($supplier);
     }
 
@@ -70,12 +62,6 @@ class SupplierController extends Controller
      */
     public function update(Request $request, Supplier $supplier)
     {
-        if ($supplier->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $organization = Auth::user()->organization;
-
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'contact_person' => 'nullable|string|max:255',
@@ -83,9 +69,7 @@ class SupplierController extends Controller
                 'nullable',
                 'email',
                 'max:255',
-                Rule::unique('suppliers')->where(function ($query) use ($organization) {
-                    return $query->where('organization_id', $organization->id);
-                })->ignore($supplier->id),
+                Rule::unique('suppliers')->ignore($supplier->id),
             ],
             'phone' => 'nullable|string|max:255',
             'whatsapp_number' => 'nullable|string|max:255', // Basic validation for now
@@ -108,10 +92,6 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        if ($supplier->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $supplier->delete();
 
         return response()->json(null, 204);

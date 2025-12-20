@@ -15,8 +15,7 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        $organization = Auth::user()->organization;
-        return response()->json($organization->customers);
+        return response()->json(Customer::all());
     }
 
     /**
@@ -37,8 +36,7 @@ class CustomerController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $organization = Auth::user()->organization;
-        $customer = $organization->customers()->create($request->all());
+        $customer = Customer::create($request->all());
 
         return response()->json($customer, 201);
     }
@@ -48,9 +46,6 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer)
     {
-        if ($customer->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
         return response()->json($customer);
     }
 
@@ -59,10 +54,6 @@ class CustomerController extends Controller
      */
     public function update(Request $request, Customer $customer)
     {
-        if ($customer->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:customers,email,' . $customer->id,
@@ -86,10 +77,6 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
-        if ($customer->organization_id !== Auth::user()->organization_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $customer->delete();
 
         return response()->json(null, 204);
