@@ -10,6 +10,9 @@ use App\Http\Controllers\Api\EstimateController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReminderController;
+use App\Http\Controllers\Api\CategoryController; // New Import
+use App\Http\Controllers\Api\UnitController; // New Import
+use App\Http\Controllers\Api\TaxController; // New Import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +30,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('products', ProductController::class);
+    Route::apiResource('categories', CategoryController::class); // New Route
+    Route::apiResource('units', UnitController::class); // New Route
+    Route::apiResource('taxes', TaxController::class); // New Route
     Route::apiResource('invoices', InvoiceController::class);
     Route::get('invoices/{invoice}/receipt', [InvoiceController::class, 'receipt']);
     Route::apiResource('suppliers', SupplierController::class);
