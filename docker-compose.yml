@@ -36,6 +36,8 @@ services:
       DB_DATABASE: "${DB_DATABASE}"
       DB_USERNAME: "${DB_USERNAME}"
       DB_PASSWORD: "${DB_PASSWORD}"
+      MOBILE_APP_LATEST_VERSION: "${MOBILE_APP_LATEST_VERSION}"
+      MOBILE_APP_UPDATE_URL: "${MOBILE_APP_UPDATE_URL}"
     networks:
       - shree_crm_network
 
