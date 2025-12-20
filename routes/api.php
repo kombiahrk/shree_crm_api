@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\CategoryController; // New Import
 use App\Http\Controllers\Api\UnitController; // New Import
 use App\Http\Controllers\Api\TaxController; // New Import
+use App\Http\Controllers\Api\AppVersionController; // New Import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,7 @@ Route::get('/status', function () {
     return response()->json(['message' => 'Welcome to the API']);
 });
 
+Route::get('/app-version', [AppVersionController::class, 'getLatestVersion']); // New public route
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
