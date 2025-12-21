@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
+use Illuminate\Support\Facades\Log;
+
 class PurchaseOrderController extends Controller
 {
     /**
@@ -27,6 +29,7 @@ class PurchaseOrderController extends Controller
      */
     public function store(Request $request)
     {
+        Log::info(json_encode($request->all()));
         $organization = Auth::user()->organization;
 
         $validator = Validator::make($request->all(), [
@@ -81,7 +84,7 @@ class PurchaseOrderController extends Controller
             $cgstAmount = 0.00;
             $sgstAmount = 0.00;
             $igstAmount = 0.00;
-            $purchasePriceWithTax = $itemTotalBeforeTax; // Initialize with value before tax
+            $purchasePriceWithTax = $itemTotalBeforeTax;
 
             if ($itemTaxRate > 0) {
                 if ($isInterState) {
@@ -133,6 +136,9 @@ class PurchaseOrderController extends Controller
 
         foreach ($purchaseOrderItemsData as $item) {
             $purchaseOrder->items()->create($item);
+            if ($item['product_id']) {
+                Product::where('id', $item['product_id'])->increment('stock_quantity', $item['quantity']);
+            }
         }
 
         return response()->json($purchaseOrder->load(['supplier', 'items.product']), 201);
@@ -151,6 +157,7 @@ class PurchaseOrderController extends Controller
      */
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
+        Log::info(json_encode($request->all()));
         $organization = Auth::user()->organization;
 
         $validator = Validator::make($request->all(), [
