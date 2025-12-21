@@ -200,6 +200,7 @@ class InvoiceController extends Controller
 
                 if (isset($itemData['tax_id'])) {
                     $tax = Tax::where('id', $itemData['tax_id'])->firstOrFail();
+                    $product = Product::where('id', $itemData['product_id'])->firstOrFail();
                     $itemTaxRate = $tax->rate;
                     $taxId = $tax->id;
                 } elseif (isset($itemData['product_id'])) {
