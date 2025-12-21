@@ -38,13 +38,13 @@ class InvoiceController extends Controller
             'items.*.item_name' => 'required_without:items.*.product_id|string|max:255',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.tax_id' => 'nullable|exists:taxes,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify customer belongs to the organization (handled by global scope)
         $customer = Customer::where('id', $request->customer_id)->firstOrFail();
 
         $subtotal = 0;
@@ -53,19 +53,24 @@ class InvoiceController extends Controller
         $totalIgstAmount = 0;
         $invoiceItemsData = [];
 
-        // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $customer->state !== null && $organization->state !== $customer->state);
 
         foreach ($request->items as $itemData) {
             $product = null;
-            $itemTaxRate = 0.00; // Default tax rate (e.g., 0 for custom items or if product has no tax)
+            $itemTaxRate = 0.00;
+            $taxId = null;
 
-            if (isset($itemData['product_id'])) {
+            if (isset($itemData['tax_id'])) {
+                $tax = Tax::where('id', $itemData['tax_id'])->firstOrFail();
+                $itemTaxRate = $tax->rate;
+                $taxId = $tax->id;
+            } elseif (isset($itemData['product_id'])) {
                 $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                 if ($product->stock_quantity < $itemData['quantity']) {
                     return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
                 }
-                $itemTaxRate = $product->tax ? $product->tax->rate : 0.00; // Get rate from Tax model
+                $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
+                $taxId = $product->tax ? $product->tax->id : null;
             }
 
             $unitPrice = $itemData['unit_price'];
@@ -79,14 +84,15 @@ class InvoiceController extends Controller
             $cgstAmount = 0.00;
             $sgstAmount = 0.00;
             $igstAmount = 0.00;
+            $sellingPriceWithTax = $itemTotalBeforeTax;
 
             if ($itemTaxRate > 0) {
                 if ($isInterState) {
-                    $igstRate = $itemTaxRate / 100; // Convert percentage to decimal
+                    $igstRate = $itemTaxRate / 100;
                     $igstAmount = $itemTotalBeforeTax * $igstRate;
                     $totalIgstAmount += $igstAmount;
                 } else {
-                    $cgstRate = ($itemTaxRate / 2) / 100; // Split rate and convert to decimal
+                    $cgstRate = ($itemTaxRate / 2) / 100;
                     $sgstRate = ($itemTaxRate / 2) / 100;
                     $cgstAmount = $itemTotalBeforeTax * $cgstRate;
                     $sgstAmount = $itemTotalBeforeTax * $sgstRate;
@@ -94,13 +100,16 @@ class InvoiceController extends Controller
                     $totalSgstAmount += $sgstAmount;
                 }
             }
+            $sellingPriceWithTax = $itemTotalBeforeTax + $cgstAmount + $sgstAmount + $igstAmount;
 
             $invoiceItemsData[] = [
                 'product_id' => $product ? $product->id : null,
+                'tax_id' => $taxId,
                 'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
-                'item_total' => $itemTotalBeforeTax,
+                'sub_total_price' => $itemTotalBeforeTax,
+                'selling_price_with_tax' => $sellingPriceWithTax,
                 'cgst_rate' => $cgstRate,
                 'sgst_rate' => $sgstRate,
                 'igst_rate' => $igstRate,
@@ -126,7 +135,6 @@ class InvoiceController extends Controller
 
         foreach ($invoiceItemsData as $item) {
             $invoice->items()->create($item);
-            // Optionally decrement stock if product_id is present
             if ($item['product_id']) {
                 Product::where('id', $item['product_id'])->decrement('stock_quantity', $item['quantity']);
             }
@@ -161,43 +169,46 @@ class InvoiceController extends Controller
             'items.*.item_name' => 'required_without:items.*.product_id|string|max:255',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.tax_id' => 'nullable|exists:taxes,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify customer belongs to the organization if customer_id is provided (handled by global scope)
         $customer = Customer::where('id', $request->customer_id ?? $invoice->customer_id)->firstOrFail();
 
-        // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $customer->state !== null && $organization->state !== $customer->state);
 
-
-        // Update items and recalculate totals if items are provided
         if ($request->has('items')) {
             $subtotal = 0;
             $totalCgstAmount = 0;
             $totalSgstAmount = 0;
             $totalIgstAmount = 0;
 
-            // Restore previous stock for existing items
             foreach ($invoice->items as $oldItem) {
                 if ($oldItem->product_id) {
                     Product::where('id', $oldItem->product_id)->increment('stock_quantity', $oldItem->quantity);
                 }
             }
-            $invoice->items()->delete(); // Remove all old items to re-add/update
+            $invoice->items()->delete();
 
             foreach ($request->items as $itemData) {
                 $product = null;
-                $itemTaxRate = 0.00; // Default tax for custom items
-                if (isset($itemData['product_id'])) {
+                $itemTaxRate = 0.00;
+                $taxId = null;
+
+                if (isset($itemData['tax_id'])) {
+                    $tax = Tax::where('id', $itemData['tax_id'])->firstOrFail();
+                    $itemTaxRate = $tax->rate;
+                    $taxId = $tax->id;
+                } elseif (isset($itemData['product_id'])) {
                     $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                     if ($product->stock_quantity < $itemData['quantity']) {
                         return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
                     }
                     $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
+                    $taxId = $product->tax ? $product->tax->id : null;
                 }
 
                 $unitPrice = $itemData['unit_price'];
@@ -211,6 +222,7 @@ class InvoiceController extends Controller
                 $cgstAmount = 0.00;
                 $sgstAmount = 0.00;
                 $igstAmount = 0.00;
+                $sellingPriceWithTax = $itemTotalBeforeTax;
 
                 if ($itemTaxRate > 0) {
                     if ($isInterState) {
@@ -226,13 +238,16 @@ class InvoiceController extends Controller
                         $totalSgstAmount += $sgstAmount;
                     }
                 }
+                $sellingPriceWithTax = $itemTotalBeforeTax + $cgstAmount + $sgstAmount + $igstAmount;
 
                 $invoice->items()->create([
                     'product_id' => $product ? $product->id : null,
+                    'tax_id' => $taxId,
                     'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                     'unit_price' => $unitPrice,
                     'quantity' => $quantity,
-                    'item_total' => $itemTotalBeforeTax,
+                    'sub_total_price' => $itemTotalBeforeTax,
+                    'selling_price_with_tax' => $sellingPriceWithTax,
                     'cgst_rate' => $cgstRate,
                     'sgst_rate' => $sgstRate,
                     'igst_rate' => $igstRate,

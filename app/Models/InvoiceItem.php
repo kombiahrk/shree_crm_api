@@ -18,10 +18,12 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'product_id',
+        'tax_id',
         'item_name',
         'unit_price',
         'quantity',
-        'item_total',
+        'sub_total_price',
+        'selling_price_with_tax',
         'cgst_rate',
         'sgst_rate',
         'igst_rate',
@@ -39,7 +41,8 @@ class InvoiceItem extends Model
     {
         return [
             'unit_price' => 'decimal:2',
-            'item_total' => 'decimal:2',
+            'sub_total_price' => 'decimal:2',
+            'selling_price_with_tax' => 'decimal:2',
             'cgst_rate' => 'decimal:2',
             'sgst_rate' => 'decimal:2',
             'igst_rate' => 'decimal:2',
@@ -63,5 +66,13 @@ class InvoiceItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the tax associated with the invoice item.
+     */
+    public function tax(): BelongsTo
+    {
+        return $this->belongsTo(Tax::class);
     }
 }

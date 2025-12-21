@@ -18,10 +18,12 @@ class PurchaseOrderItem extends Model
     protected $fillable = [
         'purchase_order_id',
         'product_id',
+        'tax_id',
         'item_name',
         'quantity',
-        'unit_cost',
-        'item_total',
+        'purchase_price',
+        'sub_total_price',
+        'purchase_price_with_tax',
         'cgst_rate',
         'sgst_rate',
         'igst_rate',
@@ -38,8 +40,9 @@ class PurchaseOrderItem extends Model
     protected function casts(): array
     {
         return [
-            'unit_cost' => 'decimal:2',
-            'item_total' => 'decimal:2',
+            'purchase_price' => 'decimal:2',
+            'sub_total_price' => 'decimal:2',
+            'purchase_price_with_tax' => 'decimal:2',
             'cgst_rate' => 'decimal:2',
             'sgst_rate' => 'decimal:2',
             'igst_rate' => 'decimal:2',
@@ -63,5 +66,13 @@ class PurchaseOrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the tax associated with the item.
+     */
+    public function tax(): BelongsTo
+    {
+        return $this->belongsTo(Tax::class);
     }
 }

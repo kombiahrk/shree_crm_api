@@ -37,15 +37,14 @@ class PurchaseOrderController extends Controller
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.item_name' => 'required_without:items.*.product_id|string|max:255',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_cost' => 'required|numeric|min:0',
-            'items.*.gst_rate' => 'required|numeric|min:0|max:1',
+            'items.*.purchase_price' => 'required|numeric|min:0',
+            'items.*.tax_id' => 'nullable|exists:taxes,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify supplier belongs to the organization (handled by global scope)
         $supplier = Supplier::where('id', $request->supplier_id)->firstOrFail();
 
         $subtotal = 0;
@@ -54,21 +53,26 @@ class PurchaseOrderController extends Controller
         $totalIgstAmount = 0;
         $purchaseOrderItemsData = [];
 
-        // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $supplier->state !== null && $organization->state !== $supplier->state);
 
         foreach ($request->items as $itemData) {
             $product = null;
-            $itemTaxRate = 0.00; // Default tax rate
+            $itemTaxRate = 0.00;
+            $taxId = null;
 
-            if (isset($itemData['product_id'])) {
+            if (isset($itemData['tax_id'])) {
+                $tax = Tax::where('id', $itemData['tax_id'])->firstOrFail();
+                $itemTaxRate = $tax->rate;
+                $taxId = $tax->id;
+            } elseif (isset($itemData['product_id'])) {
                 $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                 $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
+                $taxId = $product->tax ? $product->tax->id : null;
             }
 
-            $unitCost = $itemData['unit_cost'];
+            $purchasePrice = $itemData['purchase_price'];
             $quantity = $itemData['quantity'];
-            $itemTotalBeforeTax = $unitCost * $quantity;
+            $itemTotalBeforeTax = $purchasePrice * $quantity;
             $subtotal += $itemTotalBeforeTax;
 
             $cgstRate = 0.00;
@@ -77,6 +81,7 @@ class PurchaseOrderController extends Controller
             $cgstAmount = 0.00;
             $sgstAmount = 0.00;
             $igstAmount = 0.00;
+            $purchasePriceWithTax = $itemTotalBeforeTax; // Initialize with value before tax
 
             if ($itemTaxRate > 0) {
                 if ($isInterState) {
@@ -92,13 +97,17 @@ class PurchaseOrderController extends Controller
                     $totalSgstAmount += $sgstAmount;
                 }
             }
+            $purchasePriceWithTax = $itemTotalBeforeTax + $cgstAmount + $sgstAmount + $igstAmount;
+
 
             $purchaseOrderItemsData[] = [
                 'product_id' => $product ? $product->id : null,
+                'tax_id' => $taxId,
                 'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                 'quantity' => $quantity,
-                'unit_cost' => $unitCost,
-                'item_total' => $itemTotalBeforeTax,
+                'purchase_price' => $purchasePrice,
+                'sub_total_price' => $itemTotalBeforeTax,
+                'purchase_price_with_tax' => $purchasePriceWithTax,
                 'cgst_rate' => $cgstRate,
                 'sgst_rate' => $sgstRate,
                 'igst_rate' => $igstRate,
@@ -154,40 +163,44 @@ class PurchaseOrderController extends Controller
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.item_name' => 'required_without:items.*.product_id|string|max:255',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_cost' => 'required|numeric|min:0',
-            'items.*.gst_rate' => 'required|numeric|min:0|max:1',
+            'items.*.purchase_price' => 'required|numeric|min:0',
+            'items.*.tax_id' => 'nullable|exists:taxes,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        // Verify supplier belongs to the organization if supplier_id is provided (handled by global scope)
         $supplier = Supplier::where('id', $request->supplier_id ?? $purchaseOrder->supplier_id)->firstOrFail();
 
-        // Determine if inter-state (IGST) or intra-state (CGST + SGST)
         $isInterState = ($organization->state !== null && $supplier->state !== null && $organization->state !== $supplier->state);
 
-        // Update items and recalculate totals if items are provided
         if ($request->has('items')) {
             $subtotal = 0;
             $totalCgstAmount = 0;
             $totalSgstAmount = 0;
             $totalIgstAmount = 0;
 
-            $purchaseOrder->items()->delete(); // Remove all old items to re-add/update
+            $purchaseOrder->items()->delete();
 
             foreach ($request->items as $itemData) {
                 $product = null;
-                $itemTaxRate = 0.00; // Default tax rate
-                if (isset($itemData['product_id'])) {
+                $itemTaxRate = 0.00;
+                $taxId = null;
+
+                if (isset($itemData['tax_id'])) {
+                    $tax = Tax::where('id', $itemData['tax_id'])->firstOrFail();
+                    $itemTaxRate = $tax->rate;
+                    $taxId = $tax->id;
+                } elseif (isset($itemData['product_id'])) {
                     $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
                     $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
+                    $taxId = $product->tax ? $product->tax->id : null;
                 }
 
-                $unitCost = $itemData['unit_cost'];
+                $purchasePrice = $itemData['purchase_price'];
                 $quantity = $itemData['quantity'];
-                $itemTotalBeforeTax = $unitCost * $quantity;
+                $itemTotalBeforeTax = $purchasePrice * $quantity;
                 $subtotal += $itemTotalBeforeTax;
 
                 $cgstRate = 0.00;
@@ -196,6 +209,7 @@ class PurchaseOrderController extends Controller
                 $cgstAmount = 0.00;
                 $sgstAmount = 0.00;
                 $igstAmount = 0.00;
+                $purchasePriceWithTax = $itemTotalBeforeTax;
 
                 if ($itemTaxRate > 0) {
                     if ($isInterState) {
@@ -211,13 +225,16 @@ class PurchaseOrderController extends Controller
                         $totalSgstAmount += $sgstAmount;
                     }
                 }
+                $purchasePriceWithTax = $itemTotalBeforeTax + $cgstAmount + $sgstAmount + $igstAmount;
 
                 $purchaseOrder->items()->create([
                     'product_id' => $product ? $product->id : null,
+                    'tax_id' => $taxId,
                     'item_name' => $itemData['item_name'] ?? ($product ? $product->name : 'Custom Item'),
                     'quantity' => $quantity,
-                    'unit_cost' => $unitCost,
-                    'item_total' => $itemTotalBeforeTax,
+                    'purchase_price' => $purchasePrice,
+                    'sub_total_price' => $itemTotalBeforeTax,
+                    'purchase_price_with_tax' => $purchasePriceWithTax,
                     'cgst_rate' => $cgstRate,
                     'sgst_rate' => $sgstRate,
                     'igst_rate' => $igstRate,
