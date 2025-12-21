@@ -88,12 +88,12 @@ class InvoiceController extends Controller
 
             if ($itemTaxRate > 0) {
                 if ($isInterState) {
-                    $igstRate = $itemTaxRate / 100;
+                    $igstRate = $itemTaxRate;
                     $igstAmount = $itemTotalBeforeTax * $igstRate;
                     $totalIgstAmount += $igstAmount;
                 } else {
-                    $cgstRate = ($itemTaxRate / 2) / 100;
-                    $sgstRate = ($itemTaxRate / 2) / 100;
+                    $cgstRate = ($itemTaxRate / 2);
+                    $sgstRate = ($itemTaxRate / 2);
                     $cgstAmount = $itemTotalBeforeTax * $cgstRate;
                     $sgstAmount = $itemTotalBeforeTax * $sgstRate;
                     $totalCgstAmount += $cgstAmount;
@@ -226,12 +226,12 @@ class InvoiceController extends Controller
 
                 if ($itemTaxRate > 0) {
                     if ($isInterState) {
-                        $igstRate = $itemTaxRate / 100;
+                        $igstRate = $itemTaxRate;
                         $igstAmount = $itemTotalBeforeTax * $igstRate;
                         $totalIgstAmount += $igstAmount;
                     } else {
-                        $cgstRate = ($itemTaxRate / 2) / 100;
-                        $sgstRate = ($itemTaxRate / 2) / 100;
+                        $cgstRate = ($itemTaxRate / 2);
+                        $sgstRate = ($itemTaxRate / 2);
                         $cgstAmount = $itemTotalBeforeTax * $cgstRate;
                         $sgstAmount = $itemTotalBeforeTax * $sgstRate;
                         $totalCgstAmount += $cgstAmount;
