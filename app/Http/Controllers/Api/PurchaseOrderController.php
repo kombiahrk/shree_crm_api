@@ -191,7 +191,7 @@ class PurchaseOrderController extends Controller
             
             foreach ($purchaseOrder->items as $oldItem) {
                 if ($oldItem->product_id) {
-                    Product::where('id', $oldItem->product_id)->increment('stock_quantity', $oldItem->quantity);
+                    Product::where('id', $oldItem->product_id)->decrement('stock_quantity', $oldItem->quantity);
                 }
             }
             $purchaseOrder->items()->delete();
@@ -261,7 +261,7 @@ class PurchaseOrderController extends Controller
                 ]);
                 
                 if ($product) {
-                    Product::where('id', $product->id)->decrement('stock_quantity', $quantity);
+                    Product::where('id', $product->id)->increment('stock_quantity', $quantity);
                 }
             }
 
