@@ -188,7 +188,12 @@ class PurchaseOrderController extends Controller
             $totalCgstAmount = 0;
             $totalSgstAmount = 0;
             $totalIgstAmount = 0;
-
+            
+            foreach ($purchaseOrder->items as $oldItem) {
+                if ($oldItem->product_id) {
+                    Product::where('id', $oldItem->product_id)->increment('stock_quantity', $oldItem->quantity);
+                }
+            }
             $purchaseOrder->items()->delete();
 
             foreach ($request->items as $itemData) {
@@ -203,6 +208,9 @@ class PurchaseOrderController extends Controller
                     $taxId = $tax->id;
                 } elseif (isset($itemData['product_id'])) {
                     $product = Product::with('tax')->where('id', $itemData['product_id'])->firstOrFail();
+                    if ($product->stock_quantity < $itemData['quantity']) {
+                        return response()->json(['message' => "Not enough {$product->name} in stock."], 422);
+                    }
                     $itemTaxRate = $product->tax ? $product->tax->rate : 0.00;
                     $taxId = $product->tax ? $product->tax->id : null;
                 }
@@ -251,6 +259,10 @@ class PurchaseOrderController extends Controller
                     'sgst_amount' => $sgstAmount,
                     'igst_amount' => $igstAmount,
                 ]);
+                
+                if ($product) {
+                    Product::where('id', $product->id)->decrement('stock_quantity', $quantity);
+                }
             }
 
             $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
@@ -263,7 +275,7 @@ class PurchaseOrderController extends Controller
                 'total_amount' => $totalAmount,
             ]);
         }
-        
+
         $purchaseOrder->update($request->except('items'));
 
         return response()->json($purchaseOrder->load(['supplier', 'items.product']));
