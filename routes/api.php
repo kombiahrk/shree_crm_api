@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\CategoryController; // New Import
 use App\Http\Controllers\Api\UnitController; // New Import
 use App\Http\Controllers\Api\TaxController; // New Import
 use App\Http\Controllers\Api\AppVersionController; // New Import
+use App\Http\Controllers\Api\ReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -44,4 +45,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('purchase-orders/{purchase_order}/receive', [PurchaseOrderController::class, 'receive']);
     Route::apiResource('payments', PaymentController::class);
     Route::apiResource('reminders', ReminderController::class);
+    Route::get('/reports/stock', [ReportController::class, 'stockReport']);
+    Route::get('/reports/gst', [ReportController::class, 'gstReport']);
 });
