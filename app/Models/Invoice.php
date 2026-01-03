@@ -26,6 +26,7 @@ class Invoice extends Model
         'sgst_amount',
         'igst_amount',
         'total_amount',
+        'round_off_amount',
         'paid_amount',
         'status',
         'organization_id',

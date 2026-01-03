@@ -42,6 +42,7 @@ class PurchaseOrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.purchase_price' => 'required|numeric|min:0',
             'items.*.tax_id' => 'nullable|exists:taxes,id',
+            'round_off_amount' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -121,7 +122,8 @@ class PurchaseOrderController extends Controller
             ];
         }
 
-        $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
+        $roundOffAmount = $request->round_off_amount ?? 0.00;
+        $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount + $roundOffAmount;
 
         $purchaseOrder = PurchaseOrder::create([
             'supplier_id' => $supplier->id,
@@ -131,6 +133,7 @@ class PurchaseOrderController extends Controller
             'cgst_amount' => $totalCgstAmount,
             'sgst_amount' => $totalSgstAmount,
             'igst_amount' => $totalIgstAmount,
+            'round_off_amount' => $roundOffAmount,
             'total_amount' => $totalAmount,
             'status' => $request->status ?? 'draft',
         ]);
@@ -173,6 +176,7 @@ class PurchaseOrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.purchase_price' => 'required|numeric|min:0',
             'items.*.tax_id' => 'nullable|exists:taxes,id',
+            'round_off_amount' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
@@ -265,13 +269,15 @@ class PurchaseOrderController extends Controller
                 }
             }
 
-            $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount;
+            $roundOffAmount = $request->round_off_amount ?? 0.00;
+            $totalAmount = $subtotal + $totalCgstAmount + $totalSgstAmount + $totalIgstAmount + $roundOffAmount;
 
             $purchaseOrder->update([
                 'subtotal' => $subtotal,
                 'cgst_amount' => $totalCgstAmount,
                 'sgst_amount' => $totalSgstAmount,
                 'igst_amount' => $totalIgstAmount,
+                'round_off_amount' => $roundOffAmount,
                 'total_amount' => $totalAmount,
             ]);
         }
